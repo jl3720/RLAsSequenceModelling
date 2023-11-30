@@ -3,43 +3,109 @@ import enum
 import copy
 
 
-class strategy(enum.Enum):
-    RANDOM = 1,
-    MINMAX = 2
+class GameManager:
+    def __init__(self, players):
+        self.players = players
 
-class connect4:
+    def _play_single(self, env, buffer):
+        done = False
+        state = env.reset()
+        i = 0
+        while not done:
+            state, action, done, rew = env.step(self.players[i%len(self.players)].step(state, 1))
+        buffer.add_sample(*env.export_game())
+
+    # fill the buffer with batch_size batches
+    def play(self, batch_size, env, buffer):
+        for i in range(0, batch_size):
+            self._play_single(env, buffer)
+
+
+class Player:
+    def step(self, state, desire):
+        pass
+
+class RandomPlayer(Player):
+    def step(self, state, desire):
+        return [1/7, 1/7, 1/7, 1/7, 1/7, 1/7, 1/7]
+
+class Connect4:
     def __init__(self) -> None:
         self.nrows = 6
-        self.ncols =7 
-        self.board = np.zeros((self.nrows,self.ncols))
+        self.ncols =7
+
         self.player_turn = 1
         self.winning_player = 0
         self.game_over = False
+        self.board = np.zeros((self.nrows,self.ncols))
+        self.states = []
+        self.actions = []
 
-    def place_mark(self, col, player_id):
+    def reset(self):
+        self.player_turn = 1
+        self.winning_player = 0
+        self.game_over = False
+        self.board = np.zeros((self.nrows,self.ncols))
+        self.states = []
+        self.actions = []
+        return self.board.copy()
+
+    # returns state, action, done, info
+    # if done = True -> info 
+    def step(self, action_prob):
+        # first sample action_prob
+        a = np.random.choice(range(self.ncols), 1, p=action_prob)[0]
+        if not self.place_mark(a):
+            x = sorted(range(self.ncols), key=lambda k: -action_prob[k])
+            placed = False
+            for act in x:
+                if self.place_mark(act):
+                    a = act
+                    placed = True
+                    break
+            if not placed:
+                return self.board.copy(), a, True, self.winning_player
+
+
+        # secondly go throw all options 1 by 1
+        self.check_game_over(self.player_turn)        
+        self.player_turn = self.player_turn % 2 + 1
+
+        state = self.board.copy()
+        if self.player_turn != 1:
+            state = -1*state
+
+        self.states.append(state)
+        self.actions.append(a)
+
+        if self.game_over:            
+            return state, a, True, self.winning_player
+        return state, a, False, 0
+
+    def export_game(self):
+        return self.states, self.actions, self.winning_player
+
+    def place_mark(self, col):
         current_col = self.board[:,col]
         spot_to_place = np.where(current_col == 0)[0]
         if len(spot_to_place)>0:
-            self.board[spot_to_place[-1], col] = player_id
-            self.check_game_over(player_id)
-        else:
-            throw: ValueError("Chosen column full")
-        self.player_turn = self.player_turn % 2 + 1
-    
-    def check_game_over_other_board(self, board):
-        self.board = board
-        self.check_game_over()
+            self.board[spot_to_place[-1], col] = 1 if self.player_turn == 1 else -1
+            return True
+        return False
 
     def check_game_over(self, player_id):
-        
+        w = player_id
+        if player_id == 2:
+            w = -1
+
         # Check rows & cols
-        winning_array = player_id*np.ones(4)
+        winning_array = w*np.ones(4)
         for row in range(self.nrows):
             for col in range(self.ncols - 4 + 1):
                 current_row = self.board[row,col:col +4 ]
                 if np.array_equal(winning_array, current_row):
                     self.game_over = True
-                    self.winning_player = player_id
+                    self.winning_player = w
                     
                     return
                 
@@ -49,7 +115,7 @@ class connect4:
 
                 if np.array_equal(winning_array, current_col.T):
                     self.game_over = True
-                    self.winning_player = player_id
+                    self.winning_player = w
                     return
 
 
@@ -58,7 +124,7 @@ class connect4:
             for j in range(self.ncols - 4 + 1):
                 if np.array_equal(np.diagonal(self.board[i:i+4, j:j+4]), winning_array):
                     self.game_over = True
-                    self.winning_player = player_id
+                    self.winning_player = w
 
                     return 
 
@@ -67,98 +133,10 @@ class connect4:
             for j in range(self.ncols - 4 + 1):
                 if np.array_equal(np.diagonal(np.fliplr(self.board)[i-4+1:i+1, j:j+4]), winning_array):
                     self.game_over = True
-                    self.winning_player = player_id
+                    self.winning_player = w
                     return 
 
     
     def get_board_state(self):
         return copy.copy(self.board)
-    
-
-class Player:
-    def __init__(self, pid, strat, game) -> None:
-        self.player_id = pid
-        self.strategy = strat
-        self.max_depth = 6
-        self.game = game
-
-    def place_mark(self):
-        chosen_col = 0
-
-
-        if self.strategy == strategy.RANDOM:
-            chosen_col = self.get_random_col()
-
-        else: 
-            chosen_col = self.get_minmax_col(current_board, current_depth=0)
-        
-        self.game.place_mark(chosen_col, self.player_id)
-    
-    def get_minmax_col(self, current_board, current_depth):
-        chosen_col = 0
-        max_score = 0
-        min_score = 0
-
-        if current_depth == self.max_depth:
-            possible_next_moves = self.get_possible_moves(self.game)
-            for j in possible_next_moves:
-                if j<0:
-                    continue
-
-                if connect4.check_game_over_other_board(current_board):
-
-                    return 1
-        self.get_minmax_col()
-
-
-        return chosen_col
-    def get_possible_moves(self):
-
-        zero_positions = np.argmin(self.game.board == 0, axis = 0)
-        full_columns = np.all(self.game.board != 0, axis = 0)
-        zero_positions[full_columns] = -1
-        zero_positions[zero_positions>0] -=1 
-        return zero_positions
-
-    def get_random_col(self):
-        chosen_col = 0
-        chosen = False
-
-        while not chosen:
-            suggestion = np.random.randint(self.game.ncols)
-            if 0 in self.game.board[:,suggestion]:
-                chosen = True
-                chosen_col = suggestion
-
-        return chosen_col
-
-def main():
-    game = connect4()
-    p1 = Player(1, strategy.RANDOM, game)
-    p2 = Player(2, strategy.RANDOM, game)
-    turns_taken = 0
-    for turn_counter in range(int(game.ncols*game.nrows / 2)):
-        if not game.game_over:
-            p1.place_mark()
-        if not game.game_over:
-            p2.place_mark()
-        if game.game_over:
-            turns_taken = turn_counter +1
-            break
-
-    print(game.get_board_state())
-        
-    if game.winning_player != 0:
-        print(f"Game over, Player {game.winning_player} has won! They won in {turns_taken} turns.")
-    else:
-        print(f"Game ended in a draw.")
-
-
-
-def test():
-    pass
-       
-
-if __name__ == "__main__":
-    main()
     
