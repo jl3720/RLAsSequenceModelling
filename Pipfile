@@ -7,6 +7,9 @@ name = "pypi"
 numpy = "*"
 torch = "*"
 pympler = "*"
+torchvision = "*"
+torchaudio = "*"
+matplotlib = "*"
 
 [dev-packages]
 ipykernel = "*"

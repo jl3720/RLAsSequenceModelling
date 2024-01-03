@@ -15,8 +15,8 @@ class ReplayBuffer():
         self.buffer = []
         
         
-    def add_sample(self, states, actions, reward):
-        episode = {"states": states, "actions":actions, "reward": reward}
+    def add_sample(self, states, actions, reward, elo):
+        episode = {"states": states, "actions":actions, "reward": reward, "elo": elo}
         self.buffer.append(episode)
     
     def sort(self):
@@ -29,12 +29,12 @@ class ReplayBuffer():
         batch = [self.buffer[idx] for idx in idxs]
         return batch
     
-    def save(self):
-         with bz2.BZ2File("test.pbz2", "w") as f: 
+    def save(self, file):
+         with bz2.BZ2File("data/" + file + ".pbz2", "w") as f: 
             pickle.dump(self, f)
 
     def load(file):
-        data = bz2.BZ2File(file,"rb")
+        data = bz2.BZ2File("data/" + file + ".pbz2","rb")
         data = pickle.load(data)
         return data
 
@@ -48,7 +48,7 @@ class ReplayBuffer():
         """
         # Select times in the episode:
         T = len(saved_episode["states"]) # episode max horizon 
-        t1 = np.random.randint(0,T)
+        t1 = int(np.random.power(1.5, 1)[0]*T)
 
         return t1
 
@@ -65,13 +65,13 @@ class ReplayBuffer():
         """
 
         fact = 1
-        if t % 2 == 0:
+        if t % 2 == 1:
             fact = -1
 
-        state = episode["states"][t] 
-        desired_reward = fact*episode["reward"]
+        state = fact*episode["states"][t]
+        desired_reward = fact*episode['reward']
         action = episode["actions"][t]
-        return state, desired_reward, action
+        return state, desired_reward, action, episode['elo'][t%2]/1000.0
 
     def create_training_examples(self, batch_size):
         """
@@ -93,8 +93,8 @@ class ReplayBuffer():
             #select time stamps
             t = self._select_time_steps(ep)
 
-            state, desired_reward, action = self._create_training_input(ep, t)
-            input_array.append(torch.cat([torch.FloatTensor(state.flatten()), torch.FloatTensor([desired_reward])]))
+            state, desired_reward, action, elo = self._create_training_input(ep, t)
+            input_array.append(torch.cat([torch.FloatTensor(state.flatten()), torch.FloatTensor([desired_reward, elo])]))
             output_array.append(action)
         return input_array, output_array
     
