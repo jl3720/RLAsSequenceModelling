@@ -8,7 +8,7 @@ def make_prob_overlay(state, action_dist):
     y_range = range(6)
     color_list = ['y', 'r']
     color_list_names = ["yellow", "red"]
-    if np.sum(state)>0:
+    if np.sum(state)<0:
         player_color = color_list_names[0]
     else:
         player_color = color_list_names[1]
@@ -27,4 +27,5 @@ def make_prob_overlay(state, action_dist):
     ax.bar(x_range, action_dist*6, bottom=-0.5, color = "#ffffff", zorder = 32,alpha = 0.4 ,edgecolor = "k" , linewidth = 2)    
    
     fig.suptitle(f"Probability distribution over next action for player {player_color}")
+    plt.savefig("1.pdf")
     plt.show()

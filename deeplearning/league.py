@@ -19,7 +19,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class League():
     players: int = []
     season: int = 0
-    bufferSize:int = 200000
+    bufferSize:int = 20000
     elo_history = {}
 
     def __init__(self, path="", season=0):
@@ -121,8 +121,8 @@ class League():
     def train_new_agent(self):
         print("Season " + str(self.season) + " training new Agent")
 
-        bf = BF(42, 7, 1000, 1, device).to(device)
-        optimizer = optim.Adam(params=bf.parameters(), lr=1e-5)
+        bf = mlp.BF(42, 7, 1000, 1, device).to(device)
+        optimizer = optim.Adam(params=bf.parameters(), lr=1e-3)
 
         i = 0
         cum_loss = 0
