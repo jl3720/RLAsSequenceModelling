@@ -12,45 +12,39 @@ class BF(Player, nn.Module):
         self.device = device
         self.actions = np.arange(action_space)
         self.action_space = action_space
-        self.fc1 = nn.Linear(state_space, hidden_size)
-        self.commands = nn.Linear(2, hidden_size)
+        self.fc1 = nn.Linear(state_space, hidden_size, bias=True)
+        self.commands = nn.Linear(2, hidden_size, bias=True)
         self.layers = 5
-        self.fc = [nn.Linear(hidden_size, hidden_size).to(self.device) for x in range(0, self.layers)]
-        self.last = nn.Linear(hidden_size, action_space)
+        self.fc = [nn.Linear(hidden_size, hidden_size, bias=False).to(self.device) for x in range(0, self.layers)]
+        self.last = nn.Linear(hidden_size, action_space, bias=False)
 
         self.sigmoid = nn.Sigmoid()
 
     def step(self, state, desire, elo):
-        return self.action(torch.FloatTensor(state.flatten()).to(self.device), torch.FloatTensor([desire, elo]).to(self.device))
+        return self.steps([state], desire, elo)[0]
     
     def steps(self, states, desire, elo):
         s = [torch.FloatTensor(s.flatten()).to(self.device) for s in states]
-        out_pos = self.forward(torch.stack(s), torch.FloatTensor([desire, elo]).to(self.device))
-        out_neg = self.forward(torch.stack(s), torch.FloatTensor([-desire, elo]).to(self.device))
+        s_2 = [torch.FloatTensor(s.flatten()).to(self.device) for s in states]
+        commands = [torch.FloatTensor([desire, elo]).to(self.device) for s in states]
+        commands_2 = [torch.FloatTensor([-desire, elo]).to(self.device) for s in states]
+        out_pos = self.forward(torch.stack(s), torch.stack(commands))
+        out_neg = self.forward(torch.stack(s_2), torch.stack(commands_2))
+        inner = out_pos - 0.5*out_neg
 
-        return torch.softmax(out_pos - 0.1*out_neg, dim=1).cpu().detach().numpy()
+        return torch.softmax(inner, dim=1).cpu().detach().numpy()
         
     
     def forward(self, state, command):
+        #print(state, command)
         out = torch.relu(self.fc1(state))
         command_out = torch.relu(self.commands(command))
-        out_first = out * command_out
         outx = out * command_out
         for i in range(0, self.layers):
             outx = torch.relu(self.fc[i](outx))
         out = self.last(outx)
         
         return out
-    
-    def action(self, state, desire, elo):
-        """
-        Samples the action based on their probability
-        """
-        action_prob = self.forward(state.expand(1, -1), desire, elo)[0,:]
-        action_prob_2 = self.forward(state.expand(1, -1), desire*-1, elo)[0,:]
-        probs = torch.softmax(action_prob-action_prob_2, dim=-1)
-        action = torch.distributions.categorical.Categorical(probs=probs).sample()
-        return probs.cpu().detach().numpy()
     
     def save(self, path):
         torch.save(self, "data/" + path + ".pth")

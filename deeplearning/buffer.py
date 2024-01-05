@@ -21,7 +21,7 @@ class ReplayBuffer():
     
     def sort(self):
         # keep the max buffer size
-        self.buffer = self.buffer[:self.max_size]
+        self.buffer = self.buffer[-self.max_size:]
     
     def get_random_samples(self, batch_size):
         self.sort()
@@ -68,8 +68,8 @@ class ReplayBuffer():
         if t % 2 == 1:
             fact = -1
 
-        state = fact*episode["states"][t]
         desired_reward = fact*episode['reward']
+        state = fact*episode["states"][t]
         action = episode["actions"][t]
         return state, desired_reward, action, episode['elo'][t%2]/1000.0
 

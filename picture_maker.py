@@ -17,8 +17,8 @@ def make_prob_overlay(state, action_dist):
     for x in x_range:
         for y in y_range:
             if state[y,x] != 0:
-                ax.plot(x, y, ".", markersize = 55,  color = color_list[np.maximum(0, state[y,x])], zorder = 5)
-            else:  ax.plot(x, y, ".", markersize = 55,  color = "white", zorder = 2)
+                ax.plot(x, 5-y, ".", markersize = 55,  color = color_list[np.maximum(0, state[y,x])], zorder = 5)
+            else:  ax.plot(x, 5-y, ".", markersize = 55,  color = "white", zorder = 2)
             
     ax.set_xticks([])
     ax.set_ylabel("Probability of placement in columns")

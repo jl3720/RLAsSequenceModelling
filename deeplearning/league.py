@@ -19,7 +19,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class League():
     players: int = []
     season: int = 0
-    bufferSize:int = 100000
+    bufferSize:int = 200000
     elo_history = {}
 
     def __init__(self, path="", season=0):
@@ -28,8 +28,11 @@ class League():
 
         self.players.append(RandomPlayer())
         self.players.append(GreedyRandomPlayer())
+        for i, s in enumerate(self.players):
+            self.players[i].id = i
 
-        self.buffer = ReplayBuffer(self.bufferSize*5)
+
+        self.buffer = ReplayBuffer(self.bufferSize)
         if len(path) > 0:
             print("Populating Buffer from file " + path)
             self.buffer = ReplayBuffer.load(path)
@@ -54,40 +57,59 @@ class League():
 
         # 1. Train new Agent
         agent = self.train_new_agent()
+        agent.id = self.season+2
         self.players.append(agent)
 
         # 2. Elo Random Play
-        print("Random Play")
-        for _ in range(0, int(self.bufferSize/2/1000)):
-            i1, i2 = 0,0
-            while i1 == i2:
-                i1, i2 = self.get_random_player_id(), self.get_random_player_id()
-            print(str(i1), " vs ", str(i2))
-            gm = GameManager([self.players[i1], self.players[i2]])
-            gm.play(1000, Connect4, self.buffer, self.get_aim_elo())
-            gm.info()
+        with torch.no_grad():
+            print("Random Play", flush=True)
+            for _ in range(0, int(((3/4)*self.bufferSize)/1000)):
+                i1, i2 = 0,0
+                while i1 == i2:
+                    i1, i2 = self.get_random_player_id(), self.get_random_player_id()
+                print(str(self.players[i1].id), " vs ", str(self.players[i2].id))
+                gm = GameManager([self.players[i1], self.players[i2]])
+                gm.play(1000, Connect4, self.buffer, self.get_aim_elo())
+                gm.info()
 
-        # 3. Agent Self Play
-        print("Agent Self Play")
-        for _ in range(0, int(self.bufferSize/2/10000)):
-            gm = GameManager([agent, agent])
-            gm.play(10000, Connect4, self.buffer, self.get_aim_elo())
+            # 3. Agent Self Play
+            print("Agent Self Play")
+            for _ in range(0, int(self.bufferSize/4/1000)):
+                i2 = self.get_random_player_id()
+                #print("Agent vs ", str(self.players[i2].id))
+                gm = GameManager([agent, self.players[i2]])
+                gm.play(1000, Connect4, self.buffer, self.get_aim_elo())
+                #gm.info()
 
-            
+        
+        print("Season " + str(self.season) + " results:")
+        for i, a in enumerate(self.players):
+            if not a.id in self.elo_history:
+                self.elo_history[a.id] = [0 for _ in range(0, self.season)]
+            self.elo_history[a.id].append(a.elo)
+            print(a.id, a.elo)
+        print(self.elo_history)
 
         # 4. Save Buffer + Save Agent
         print("Saving Agent")
-        agent.save(str(self.season))
+        agent.save("model")
         print("Saving Buffer")
         self.buffer.save(str(self.season))
 
-        print("Season " + str(self.season) + " results:")
-        for i, a in enumerate(self.players):
-            if not i in self.elo_history:
-                self.elo_history[i] = [0 for _ in range(0, self.season)]
-            self.elo_history[i].append(a.elo)
-            print(i, a.elo)
+        # 5. Clear weak GPU models
+        if len(self.players) > 10:
+            print("Removing weak agents")
+            a = [s.elo for s in self.players]
+            a.sort()
+            for i, agent in enumerate(self.players):
+                if agent.elo == a[0]:
+                    print("Removing player " + str(agent.id) + " with elo " + str(agent.elo))
+                    self.players.remove(agent)
+                    break
 
+        # free some gpu memory
+        torch.cuda.empty_cache()
+        
         self.season += 1
 
 
@@ -99,7 +121,7 @@ class League():
     def train_new_agent(self):
         print("Season " + str(self.season) + " training new Agent")
 
-        bf = BF(42, 7, 5000, 1, device).to(device)
+        bf = BF(42, 7, 1000, 1, device).to(device)
         optimizer = optim.Adam(params=bf.parameters(), lr=1e-5)
 
         i = 0
@@ -112,7 +134,7 @@ class League():
             if loss < best_loss - 0.001:
                 best_loss = loss
                 best_loss_i = i
-            if i - best_loss_i > 200:
+            if i - best_loss_i > 200 or i > 5000:
                 return bf
             cum_loss += loss
             if i % 100 == 0:

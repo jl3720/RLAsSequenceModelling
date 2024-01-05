@@ -31,7 +31,7 @@ class GameManager:
         rewards = [0 for env in envs]
         dones = [False for env in envs]
         states = [env.reset() for env in envs]
-        
+
         # sample actions
         s_count = start
         while not np.all(dones):
@@ -58,8 +58,8 @@ class GameManager:
         e_p2 = 1 / (1 + 10**((self.players[0].elo - self.players[1].elo)/400))
         # play games in parallel really important
 
-        rew = [*self._play_multi([env_gen() for _ in range(int(batch_size/2))], buffer, elo_aim, 0),
-            *self._play_multi([env_gen() for _ in range(int(batch_size/2))], buffer, elo_aim, 1)]
+        rew = [*self._play_multi([env_gen() for _ in range(int(batch_size/2))], buffer, elo_aim/1000, 0),
+            *self._play_multi([env_gen() for _ in range(int(batch_size/2))], buffer, elo_aim/1000, 1)]
         points_p1 = sum([0 if x == -1 else 1 if x == 1 else 0.5 for x in rew])
         points_p2 = sum([1 if x == -1 else 0 if x == 1 else 0.5 for x in rew])
 
@@ -80,6 +80,7 @@ class GameManager:
 
 
 class Player:
+    id = 0
     elo = 1000 # default elo
 
     def step(self, state, desire, elo):
@@ -98,6 +99,18 @@ class GreedyRandomPlayer(Player):
     elo = 1060
     def step(self, state, desire, elo_aim):
         return [1/12, 1/12, 1/12, 0.5, 1/12, 1/12, 1/12]
+    
+class DetPlayer(Player):
+    elo = 1000
+    def step(self, state, desire, elo_aim):
+        return [0, 0, 1, 0, 0, 0, 0]
+    
+class SmartPlayer(Player):
+    elo = 1000
+    def step(self, state, desire, elo_aim):
+        if len(np.where(state != 0)[0]) > 5:
+            return [0, 0, 0, 0, 0, 0, 1]
+        return [0, 0, 0, 1, 0, 0, 0]
 
 class Connect4:
     def __init__(self) -> None:
@@ -214,3 +227,21 @@ class Connect4:
     def get_board_state(self):
         return copy.copy(self.board)
     
+class Connect4_pre(Connect4):
+    def __init__(self):
+        super().__init__()
+        self.reset()
+
+    def reset(self):
+        super().reset()
+
+        for i in range(0,7):
+            self.board[5][i] = -1
+            self.board[4][i] = -1
+            self.board[3][i] = -1
+
+        self.board[5][3] = 1
+        self.board[4][3] = 1
+        self.board[3][3] = 1
+
+        return self.board.copy()
