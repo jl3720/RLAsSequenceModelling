@@ -22,6 +22,24 @@ RL as a supervised-learning project.
     - Example of default logging of buffer, model and ELO histories.
     - Allows visualisations in **visualise.ipynb**.
 
+## Install
+- Use `pipenv` to create a virtual environment and install packages from the `pipfile`.
+- We use Python 3.10.
+- Ensure you are in the project root.
+```bash
+$ cd <PROJECT_ROOT>
+$ ls
+>>> connect4    data    deeplearning    README      etc...
+$ pip install pipenv
+$ pipenv install
+```
+Or if that fails use `conda`:
+```bash
+$ conda create -n "udrl" python=3.10 pip
+$ conda activate udrl
+$ pip install numpy torch pympler torchvision torchaudio matplotlib ipykernel
+```
+
 ## Scripts and notebooks
 - **train.py**: Script used to run training seasons. Logging and checkpointing are handled by the `League` class.<br>
     `python train.py --help` to view options.
