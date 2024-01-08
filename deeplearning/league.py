@@ -7,6 +7,9 @@ import torch.nn as nn
 import torch.optim as optim
 import deeplearning.mlp as mlp
 import torch.nn.functional as F
+import os
+from pathlib import Path
+import json
 
 # this class contains all the logic related to training and testing and creating the agents
 # start will be with 2 players (randomAgent and greedyRandomAgent)
@@ -17,14 +20,15 @@ import torch.nn.functional as F
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class League():
-    players: int = []
+    players: list = []
     season: int = 0
     bufferSize:int = 20000
     elo_history = {}
 
-    def __init__(self, path="", season=0):
+    def __init__(self, path="", season=0, elo_log_dir=None):
         self.season = season
         self.players = []
+        self.elo_log_dir = elo_log_dir
 
         self.players.append(RandomPlayer())
         self.players.append(GreedyRandomPlayer())
@@ -88,7 +92,8 @@ class League():
                 self.elo_history[a.id] = [0 for _ in range(0, self.season)]
             self.elo_history[a.id].append(a.elo)
             print(a.id, a.elo)
-        print(self.elo_history)
+        # print(self.elo_history)
+        self.log_elos()
 
         # 4. Save Buffer + Save Agent
         print("Saving Agent")
@@ -140,6 +145,28 @@ class League():
             if i % 100 == 0:
                 print(i, cum_loss, best_loss_i, best_loss)
                 cum_loss = 0
+    
+    def log_elos(self):
+        log_dir = self.elo_log_dir if self.elo_log_dir is not None else "data/"
+        log_dir = Path(log_dir)
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        path = os.path.join(log_dir, "elo_history.json")
+
+        # Read existing content
+        existing_content = load_elo_history(path)
+
+        # Append new dictionary to the array
+        existing_content.append({self.season: self.elo_history})
+
+        # Write updated content back to the file
+        with open(path, "w") as f:
+            # for item in existing_content:
+            #     json.dump(item, f)
+            #     f.write("\n")
+            json.dump(existing_content, f, indent=4)
+
+        print(f"Elo history logged to {path}:\n{self.elo_history}")
 
 
 def train_behavior_function(batch_size, model, optimizer, buffer):
@@ -165,3 +192,12 @@ def train_behavior_function(batch_size, model, optimizer, buffer):
     pred_loss.backward()
     optimizer.step()
     return pred_loss.detach().cpu().numpy()
+
+def load_elo_history(path):
+    """Load the elo history from a json file"""
+    # Read existing content
+    existing_content = []
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            existing_content = json.load(f)
+    return existing_content
