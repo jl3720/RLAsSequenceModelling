@@ -11,15 +11,16 @@ import os
 from pathlib import Path
 import json
 
-# this class contains all the logic related to training and testing and creating the agents
-# start will be with 2 players (randomAgent and greedyRandomAgent)
-# they will play 50.000 games afterwards a agent will be trained
-# then from here on out the newest (trained!) agent will always self play 25.000 games and the rest of the 5.000 games will be split
-# among the rest of the agents completly randomly
-
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class League():
+    """
+    This class contains all the logic related to training and testing and creating the agents.
+    Start will be with 2 players (randomAgent and greedyRandomAgent).
+    They will play 50.000 games afterwards a agent will be trained.
+    Then from here on out the newest (trained!) agent will always self play 25.000 games 
+    and the rest of the 5.000 games will be split among the rest of the agents completly randomly.
+    """
     players: list = []
     season: int = 0
     bufferSize:int = 20000
