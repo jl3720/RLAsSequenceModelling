@@ -1,6 +1,10 @@
 # UDRL Deep Learning Project
 
-This repo hosts the code used to train the agents and generate the figures for the "Upside-down Reinforcement Learning" project. The aim of the project was to explore the dynamics of self-play to alleviate the issue of exploration when casting RL as a supervised-learning project. You can checkout the report [here](https://github.com/jl3720/RLAsSequenceModelling/blob/master/UDRL_Submission.pdf). We were awarded a 5.5 out 6.0 for the report.
+This repo hosts the code used to train the agents and generate the figures for the "Upside-down Reinforcement Learning" project. The aim of the project was to explore the dynamics of self-play to alleviate the issue of exploration when casting RL as a supervised-learning project. 
+
+You can checkout the report [here](https://github.com/jl3720/RLAsSequenceModelling/blob/master/UDRL_Submission.pdf). 
+
+We were awarded a **5.5 out 6.0** for the report.
 
 ## Overview
 - **connect4/**
