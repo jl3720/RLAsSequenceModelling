@@ -6,6 +6,8 @@ You can checkout the report [here](https://github.com/jl3720/RLAsSequenceModelli
 
 We were awarded a **5.5 out 6.0** for the report.
 
+In collaboration with Yannik Hesse (D-INFK) and Amandus Reimer (D-INFK).
+
 ## Overview
 - **connect4/**
     - Contains **connect4.py**
